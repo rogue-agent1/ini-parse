@@ -1,42 +1,40 @@
 #!/usr/bin/env python3
-"""INI file parser and editor without configparser."""
-import sys, re, json
+"""ini_parse - INI file parser without configparser."""
+import sys, json, re
 
-def parse(text):
-    sections = {}; current = 'DEFAULT'
-    for line in text.split('\n'):
+def parse_ini(text):
+    result = {}; section = "DEFAULT"
+    result[section] = {}
+    for line in text.split("\n"):
         line = line.strip()
-        if not line or line.startswith(('#', ';')): continue
-        m = re.match(r'\[(.+)\]', line)
-        if m: current = m.group(1); sections.setdefault(current, {}); continue
-        if '=' in line:
-            k, v = line.split('=', 1)
-            sections.setdefault(current, {})[k.strip()] = v.strip()
-    return sections
+        if not line or line.startswith(("#", ";")): continue
+        m = re.match(r"\[(.+?)\]", line)
+        if m:
+            section = m.group(1); result.setdefault(section, {}); continue
+        if "=" in line:
+            k, v = line.split("=", 1)
+            result[section][k.strip()] = v.strip()
+        elif ":" in line:
+            k, v = line.split(":", 1)
+            result[section][k.strip()] = v.strip()
+    if not result["DEFAULT"]: del result["DEFAULT"]
+    return result
 
-def to_ini(sections):
+def to_ini(data):
     lines = []
-    for section, kvs in sections.items():
-        if section != 'DEFAULT': lines.append(f'[{section}]')
-        for k, v in kvs.items(): lines.append(f'{k} = {v}')
-        lines.append('')
-    return '\n'.join(lines)
+    for sec, kvs in data.items():
+        lines.append(f"[{sec}]")
+        for k, v in kvs.items():
+            lines.append(f"{k} = {v}")
+        lines.append("")
+    return "\n".join(lines)
 
-def get_value(sections, path):
-    parts = path.split('.')
-    if len(parts) == 2: return sections.get(parts[0], {}).get(parts[1])
-    return sections.get('DEFAULT', {}).get(parts[0])
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2: print("Usage: ini_parse.py <file.ini> [get section.key | set section.key value | json]"); sys.exit(1)
-    text = open(sys.argv[1]).read()
-    sections = parse(text)
-    if len(sys.argv) == 2 or sys.argv[2] == 'json':
-        print(json.dumps(sections, indent=2))
-    elif sys.argv[2] == 'get':
-        print(get_value(sections, sys.argv[3]))
-    elif sys.argv[2] == 'set':
-        parts = sys.argv[3].split('.')
-        sections.setdefault(parts[0], {})[parts[1]] = ' '.join(sys.argv[4:])
-        open(sys.argv[1], 'w').write(to_ini(sections))
-        print(f"Set {sys.argv[3]} = {' '.join(sys.argv[4:])}")
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: ini_parse.py <parse|generate> [file]"); sys.exit(1)
+    if sys.argv[1] == "parse":
+        text = open(sys.argv[2]).read() if len(sys.argv) > 2 else sys.stdin.read()
+        print(json.dumps(parse_ini(text), indent=2))
+    elif sys.argv[1] == "generate":
+        data = json.load(sys.stdin)
+        print(to_ini(data))
