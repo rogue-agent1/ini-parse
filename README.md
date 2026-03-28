@@ -1,6 +1,6 @@
 # ini-parse
 
-INI file parser without configparser.""".
+Parse and query INI files.
 
 Zero dependencies. Python 3.8+.
 
