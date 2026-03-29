@@ -1,9 +1,11 @@
-# ini-parser
+# ini_parse
 
-INI file parser and converter. Zero-dependency, single-file Python CLI.
+ini_parse: INI file parser and writer.
+
+Single-file, zero-dependency Python CLI.
 
 ## Usage
 
 ```bash
-python3 ini_parse.py --help
+python3 ini_parse.py test
 ```
