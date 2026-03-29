@@ -1,14 +1,6 @@
-# ini-parse
-
-INI file parser and editor
-
+# ini_parse
+Single-file Python CLI tool, zero dependencies.
 ## Usage
-
 ```bash
-python3 ini_parse.py --help
+python3 ini_parse.py
 ```
-
-## Features
-
-- Zero dependencies (Python 3.8+)
-- Single file implementation
