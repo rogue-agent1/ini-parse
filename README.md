@@ -1,11 +1,6 @@
 # ini_parse
-
-ini_parse: INI file parser and writer.
-
-Single-file, zero-dependency Python CLI.
-
+Single-file Python CLI tool. Zero dependencies, Python 3.8+.
 ## Usage
-
 ```bash
-python3 ini_parse.py test
+python3 ini_parse.py --test
 ```

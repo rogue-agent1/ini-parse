@@ -1,84 +1,78 @@
 #!/usr/bin/env python3
-"""ini_parse: INI file parser and writer."""
-import sys, re
+"""ini_parse - INI file parser and writer."""
+import sys
 
-def parse(text):
-    result = {}
-    current_section = None
+def parse_ini(text):
+    sections = {}
+    current = ""
+    sections[current] = {}
     for line in text.split("\n"):
         line = line.strip()
-        if not line or line.startswith(("#", ";")):
+        if not line or line.startswith(";") or line.startswith("#"):
             continue
-        m = re.match(r"^\[(.+?)\]$", line)
-        if m:
-            current_section = m.group(1)
-            result.setdefault(current_section, {})
-            continue
-        if "=" in line:
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1].strip()
+            if current not in sections:
+                sections[current] = {}
+        elif "=" in line:
             key, val = line.split("=", 1)
-            key = key.strip()
-            val = val.strip()
-            # Remove inline comments
-            for comment_char in (";", "#"):
-                if comment_char in val:
-                    # Only if not inside quotes
-                    if not (val.startswith('"') and val.endswith('"')):
-                        val = val[:val.index(comment_char)].strip()
-            # Remove quotes
-            if val.startswith('"') and val.endswith('"'):
-                val = val[1:-1]
-            if current_section:
-                result[current_section][key] = val
-            else:
-                result.setdefault("DEFAULT", {})[key] = val
+            sections[current][key.strip()] = val.strip()
+    if not sections.get("", {}):
+        del sections[""]
+    return sections
 
-    return result
-
-def format_ini(data):
+def to_ini(sections):
     lines = []
-    for section, kvs in data.items():
-        lines.append(f"[{section}]")
-        for k, v in kvs.items():
-            if " " in str(v) or ";" in str(v):
-                lines.append(f'{k} = "{v}"')
-            else:
-                lines.append(f"{k} = {v}")
+    if "" in sections:
+        for k, v in sections[""].items():
+            lines.append(f"{k} = {v}")
         lines.append("")
-    return "\n".join(lines)
+    for section, values in sections.items():
+        if section == "":
+            continue
+        lines.append(f"[{section}]")
+        for k, v in values.items():
+            lines.append(f"{k} = {v}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
 
-def get(data, section, key, default=None):
-    return data.get(section, {}).get(key, default)
+def get_typed(sections, section, key, default=None):
+    val = sections.get(section, {}).get(key)
+    if val is None:
+        return default
+    if val.lower() in ("true", "yes", "on"): return True
+    if val.lower() in ("false", "no", "off"): return False
+    try: return int(val)
+    except ValueError:
+        try: return float(val)
+        except ValueError: return val
 
 def test():
-    text = """
+    ini = """
 [database]
 host = localhost
 port = 5432
 name = mydb
 
-[server]
+[app]
 debug = true
 workers = 4
-path = "/usr/local/bin"
-
-# Comment
-[auth]
-secret = my-secret ; inline comment
+; comment
 """
-    r = parse(text)
-    assert r["database"]["host"] == "localhost"
-    assert r["database"]["port"] == "5432"
-    assert r["server"]["debug"] == "true"
-    assert r["server"]["path"] == "/usr/local/bin"
-    assert r["auth"]["secret"] == "my-secret"
-    assert get(r, "database", "host") == "localhost"
-    assert get(r, "missing", "key", "default") == "default"
-    # Roundtrip
-    formatted = format_ini(r)
-    assert "[database]" in formatted
-    assert "host = localhost" in formatted
+    sections = parse_ini(ini)
+    assert "database" in sections
+    assert sections["database"]["host"] == "localhost"
+    assert sections["database"]["port"] == "5432"
+    assert sections["app"]["debug"] == "true"
+    assert get_typed(sections, "database", "port") == 5432
+    assert get_typed(sections, "app", "debug") == True
+    assert get_typed(sections, "app", "workers") == 4
+    assert get_typed(sections, "app", "missing", "default") == "default"
+    output = to_ini(sections)
+    reparsed = parse_ini(output)
+    assert reparsed["database"]["host"] == "localhost"
+    assert reparsed["app"]["workers"] == "4"
     print("All tests passed!")
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "test": test()
-    else: print("Usage: ini_parse.py test")
+    test() if "--test" in sys.argv else print("ini_parse: INI parser. Use --test")
